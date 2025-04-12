@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use PhpMqtt\Client\MqttClient;
 use PhpMqtt\Client\ConnectionSettings;
 use Illuminate\Support\Facades\Log;
+use App\Services\CallMeBotService;
 
 class MqttSubscribe extends Command
 {
@@ -45,7 +46,16 @@ class MqttSubscribe extends Command
             $mqtt->subscribe($topic, function (string $topic, string $message) {
                 Log::info("📩 Pesan diterima dari [$topic]: $message");
                 echo "📩 Pesan diterima dari [$topic]: $message\n";
+            
+                $data = json_decode($message, true);
+            
+                if (isset($data['tinggi']) && $data['tinggi'] > 200) {
+                    $callMeBot = new CallMeBotService();
+                    $text = "⚠️ *Peringatan Banjir*\nTinggi air saat ini: *{$data['tinggi']}cm*\nSegera ambil tindakan!";
+                    $callMeBot->sendMessage($text);
+                }
             }, 0);
+            
 
             echo "🎧 Listening to MQTT topic: $topic...\n";
 
