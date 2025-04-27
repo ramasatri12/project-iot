@@ -7,6 +7,7 @@ use PhpMqtt\Client\MqttClient;
 use PhpMqtt\Client\ConnectionSettings;
 use Illuminate\Support\Facades\Log;
 use App\Services\CallMeBotService;
+use App\Models\WaterLevel;
 
 class MqttSubscribe extends Command
 {
@@ -19,7 +20,7 @@ class MqttSubscribe extends Command
 
         $server   = '9891e057d4c74a2daf57b59b29dde4fb.s1.eu.hivemq.cloud';
         $port     = 8883;
-        $clientId = 'WebClientSigma_' . uniqid(); // Client ID unik
+        $clientId = 'WebClientSigma_' . uniqid(); 
         $username = 'sigmaesp';
         $password = 'Sigma123';
 
@@ -31,7 +32,7 @@ class MqttSubscribe extends Command
             ->setUsername($username)
             ->setPassword($password)
             ->setUseTls(true)
-            ->setTlsVerifyPeer(false) // Bisa coba true jika sertifikat valid
+            ->setTlsVerifyPeer(false)
             ->setTlsCertificateAuthorityFile($caFile);
 
         $mqtt = new MqttClient($server, $port, $clientId, MqttClient::MQTT_3_1);
@@ -42,24 +43,44 @@ class MqttSubscribe extends Command
 
             $topic = 'sensor/data';
 
-            // Subscribe ke topik dan tampilkan pesan masuk
             $mqtt->subscribe($topic, function (string $topic, string $message) {
                 Log::info("📩 Pesan diterima dari [$topic]: $message");
                 echo "📩 Pesan diterima dari [$topic]: $message\n";
             
                 $data = json_decode($message, true);
             
-                if (isset($data['tinggi']) && $data['tinggi'] > 200) {
-                    $callMeBot = new CallMeBotService();
-                    $text = "⚠️ *Peringatan Banjir*\nTinggi air saat ini: *{$data['tinggi']}cm*\nSegera ambil tindakan!";
-                    $callMeBot->sendMessage($text);
+                if (isset($data['tinggi'])) {
+                    $height = (int) $data['tinggi'];
+
+                    if ($height > 200) {
+                        $status = 'critical';
+                    } elseif ($height > 100) {
+                        $status = 'warning';
+                    } else {
+                        $status = 'normal';
+                    }
+
+                    WaterLevel::create([
+                        'height' => $height,
+                        'status' => $status,
+                    ]);
+
+                    Log::info("💾 Data disimpan ke database: Height = {$height}, Status = {$status}");
+
+                    if ($status === 'critical' || $status === 'warning') {
+                        $callMeBot = new CallMeBotService();
+                        $text = "⚠️ *Peringatan Banjir*\nTinggi air saat ini: *{$height}cm*\nSegera ambil tindakan!";
+                        $callMeBot->sendMessage($text);
+                    }
+
                 }
+
+
             }, 0);
             
 
             echo "🎧 Listening to MQTT topic: $topic...\n";
 
-            // Tetap berjalan untuk mendengarkan pesan
             $mqtt->loop(true);
         } catch (\Exception $e) {
             Log::error('❌ Gagal koneksi ke MQTT: ' . $e->getMessage());
