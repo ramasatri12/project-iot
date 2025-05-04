@@ -3,51 +3,28 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use App\Models\SensorReport;
 use PhpMqtt\Client\MqttClient;
 use PhpMqtt\Client\ConnectionSettings;
 use Illuminate\Support\Facades\Log;
 
 class MqttConnect extends Command
 {
-    protected $signature = 'mqtt:connect';
-    protected $description = 'Menguji koneksi MQTT ke HiveMQ Cloud';
+    protected $signature = 'sensor:fake';
+    protected $description = 'Generate fake sensor data';
 
     public function handle()
     {
-        Log::debug('Mencoba koneksi ke MQTT...');
+        $data = [
+            'tinggi_air' => rand(50, 250),
+            'ph' => rand(50, 90) / 10, // 5.0 - 9.0
+            'debit' => rand(100, 400) / 10, // 10.0 - 40.0
+        ];
 
-        // Correct broker hostname and port
-        $server   = '9891e057d4c74a2daf57b59b29dde4fb.s1.eu.hivemq.cloud'; // Correct broker hostname
-        $port     = 8883; // Use 8883 for TLS connections
-        $clientId = 'client123';
-        $username = 'sigmaesp';
-        $password = 'Sigma123';
+        $data['status'] = $data['tinggi_air'] > 200 ? 'critical' : ($data['tinggi_air'] > 100 ? 'warning' : 'normal');
 
-        // Use storage_path() to resolve the CA certificate path
-        $caFile = storage_path('app/certificates/isrgrootx1.pem');
+        SensorReport::create($data);
 
-        // TLS configuration
-        $connectionSettings = (new ConnectionSettings)
-            ->setUsername($username)
-            ->setPassword($password)
-            ->setUseTls(true)
-            ->setTlsCertificateAuthorityFile($caFile) // Pastikan CA sesuai
-            ->setTlsVerifyPeer(true); // Pastikan validasi sertifikat aktif
-
-        $mqtt = new MqttClient($server, $port, $clientId, MqttClient::MQTT_3_1);
-
-        try {
-            // Connect to the broker
-            $mqtt->connect($connectionSettings, true);
-            Log::debug('Koneksi ke MQTT berhasil.');
-            echo "Connected to MQTT broker.\n";
-
-            // Disconnect
-            $mqtt->disconnect();
-        } catch (\Exception $e) {
-            // Log and display the error
-            Log::error('Gagal koneksi ke MQTT: ' . $e->getMessage());
-            echo "Gagal Connected to MQTT broker: " . $e->getMessage() . "\n";
-        }
+        $this->info("✅ Data fake created: " . json_encode($data));
     }
 }

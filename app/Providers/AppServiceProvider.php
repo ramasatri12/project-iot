@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Console\Scheduling\Schedule;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,6 +20,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        $this->app->booted(function () {
+            $schedule = app(Schedule::class);
+    
+            
+            $schedule->command('mqtt:real')->everyMinute()->withoutOverlapping();
+            // Jalankan setiap 5 menit
+            $schedule->command('sensor:fake')->everyFiveMinutes();
+        });
     }
 }

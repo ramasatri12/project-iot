@@ -1,0 +1,12 @@
+@import '/vendor/filament/filament/resources/css/theme.css';
+
+/* Jangan pakai @tailwind base/components/utilities di sini */
+/* Jangan pakai @config di sini */
+
+.fi-simple-layout { 
+    @apply bg-cyan-100/50;
+}
+ 
+.fi-simple-main {
+    @apply bg-emerald-100/50;
+}

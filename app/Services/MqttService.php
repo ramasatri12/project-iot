@@ -2,45 +2,93 @@
 
 namespace App\Services;
 
+use App\Models\SensorReport;
+use Illuminate\Support\Facades\Log;
+use App\Services\CallMeBotService;
 use PhpMqtt\Client\MqttClient;
 use PhpMqtt\Client\ConnectionSettings;
-use Illuminate\Support\Facades\Log;
 
 class MqttService
 {
-    private $server = '9891e057d4c74a2daf57b59b29dde4fb.s1.eu.hivemq.cloud';
-    private $port = 8883;
-    private $username = 'sigmaesp';
-    private $password = 'Sigma123';
-    private $clientId = 'WebClientSigma'; 
-    private $topic = 'sensor/data';
-
     public function subscribe()
     {
-        $connectionSettings = (new ConnectionSettings)
-            ->setUsername($this->username)
-            ->setPassword($this->password)
-            ->setUseTls(true)
-            ->setTlsVerifyPeer(false); 
+        $server   = '18.142.250.134';
+        $port     = 1883;
+        $clientId = 'php-client-' . uniqid();
+        $username = 'Website';
+        $password = 'website123';
 
-        $mqtt = new MqttClient($this->server, $this->port, $this->clientId, MqttClient::MQTT_3_1);
+        $caFile = storage_path('app/certificates/isrgrootx1.pem');
+
+        $connectionSettings = (new ConnectionSettings)
+            ->setUsername($username)
+            ->setPassword($password)
+            ->setUseTls(false)
+            ->setTlsVerifyPeer(false)
+            ->setTlsCertificateAuthorityFile($caFile);
+
+        $mqtt = new MqttClient($server, $port, $clientId, MqttClient::MQTT_3_1);
 
         try {
             $mqtt->connect($connectionSettings, true);
-            echo "✅ Connected to MQTT broker.\n";
-            echo "🎧 Listening to MQTT topic: {$this->topic}...\n";
 
-            // Subscribe ke topik
-            $mqtt->subscribe($this->topic, function (string $topic, string $message) {
-                echo "📩 Pesan diterima dari [$topic]: $message\n";
-                Log::info("Pesan MQTT diterima: $message");
-            }, 0);
+            Log::info("✅ MQTT connected. Listening to topic...");
 
-            // Loop agar tetap mendengarkan
+            $mqtt->subscribe('sensor/data', function (string $topic, string $message) {
+                Log::info("📩 Received message from [$topic]: $message");
+
+                $data = json_decode($message, true);
+
+                if (isset($data['tinggi_air'], $data['ph'], $data['debit'])) {
+                    $status = $this->determineStatus((float) $data['tinggi_air']);
+
+                    $report = SensorReport::create([
+                        'tinggi_air' => (float) $data['tinggi_air'],
+                        'ph'         => (float) $data['ph'],
+                        'debit'      => (float) $data['debit'],
+                        'status'     => $status,
+                    ]);
+
+                    Log::info("💾 Data saved: ID={$report->id}");
+
+                    if ($status !== 'normal') {
+                        app(CallMeBotService::class)->sendMessage(
+                            "⚠️ *Peringatan Sensor*\nTinggi Air: *{$data['tinggi_air']}cm*\nPH: {$data['ph']}\nDebit: {$data['debit']}\nStatus: *{$status}*"
+                        );
+                    }
+                }
+
+            }, 0); // QoS 0
+
             $mqtt->loop(true);
         } catch (\Exception $e) {
-            Log::error('Gagal koneksi ke MQTT: ' . $e->getMessage());
-            echo "❌ Gagal Connected to MQTT broker: " . $e->getMessage() . "\n";
+            Log::error('❌ MQTT connection failed: ' . $e->getMessage());
         }
+    }
+
+
+    protected function handleMessage(array $payload)
+    {
+        $report = SensorReport::create([
+            'tinggi_air' => $payload['tinggi_air'],
+            'ph' => $payload['ph'],
+            'debit' => $payload['debit'],
+            'status' => $this->determineStatus($payload['tinggi_air']),
+        ]);
+
+        Log::info("✅ Sensor report created: ID {$report->id}");
+
+        if ($report->status !== 'normal') {
+            app(CallMeBotService::class)->sendMessage(
+                "🚨 Status: {$report->status}\nTinggi Air: {$report->tinggi_air}cm\nPH: {$report->ph}\nDebit: {$report->debit}"
+            );
+        }
+    }
+
+    protected function determineStatus($tinggi_air): string
+    {
+        if ($tinggi_air > 100) return 'critical';
+        if ($tinggi_air > 70) return 'warning';
+        return 'normal';
     }
 }

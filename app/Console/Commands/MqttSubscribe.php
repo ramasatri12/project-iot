@@ -18,32 +18,35 @@ class MqttSubscribe extends Command
     {
         Log::debug('📡 Mencoba koneksi ke MQTT...');
 
-        $server   = '9891e057d4c74a2daf57b59b29dde4fb.s1.eu.hivemq.cloud';
-        $port     = 8883;
-        $clientId = 'WebClientSigma_' . uniqid(); 
-        $username = 'sigmaesp';
-        $password = 'Sigma123';
+        $server = '18.142.250.134';
+        $port = 1883;
+        $clientId = 'php-client-' . uniqid();
+        $username = 'Website';
+        $password = 'website123';
+
 
         // Lokasi CA certificate jika diperlukan
         $caFile = storage_path('app/certificates/isrgrootx1.pem');
 
         // Pengaturan koneksi TLS
         $connectionSettings = (new ConnectionSettings)
-            ->setUsername($username)
-            ->setPassword($password)
-            ->setUseTls(true)
-            ->setTlsVerifyPeer(false)
-            ->setTlsCertificateAuthorityFile($caFile);
+        ->setUsername($username)
+        ->setPassword($password)
+        ->setUseTls(false)// Tidak pakai TLS
+        ->setTlsVerifyPeer(false) // Bisa coba true jika sertifikat valid
+        ->setTlsCertificateAuthorityFile($caFile);
+
+
 
         $mqtt = new MqttClient($server, $port, $clientId, MqttClient::MQTT_3_1);
 
         try {
             $mqtt->connect($connectionSettings, true);
-            Log::debug('✅ Koneksi ke MQTT berhasil.');
-
+            echo "✅ Connected to MQTT broker\n";
             $topic = 'sensor/data';
 
-            $mqtt->subscribe($topic, function (string $topic, string $message) {
+            // Contoh subscribe atau publish
+            $mqtt->subscribe('sensor/data', function ($topic, $message) {
                 Log::info("📩 Pesan diterima dari [$topic]: $message");
                 echo "📩 Pesan diterima dari [$topic]: $message\n";
             
@@ -75,16 +78,14 @@ class MqttSubscribe extends Command
 
                 }
 
-
             }, 0);
-            
-
             echo "🎧 Listening to MQTT topic: $topic...\n";
 
             $mqtt->loop(true);
         } catch (\Exception $e) {
             Log::error('❌ Gagal koneksi ke MQTT: ' . $e->getMessage());
             echo "❌ Gagal Connected to MQTT broker: " . $e->getMessage() . "\n";
+            echo "❌ Gagal konek: " . $e->getMessage() . "\n";
         }
     }
 }

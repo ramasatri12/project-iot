@@ -2,39 +2,45 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\WaterLevelResource\Pages;
-use App\Filament\Resources\WaterLevelResource\RelationManagers;
-use App\Models\WaterLevel;
+use App\Filament\Resources\SensorReportResource\Pages;
+use App\Filament\Resources\SensorReportResource\RelationManagers;
+use App\Models\SensorReport;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Forms\Components\TextInput;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Forms\Components\Select;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Select;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
 
-class WaterLevelResource extends Resource
+class SensorReportResource extends Resource
 {
-    protected static ?string $model = WaterLevel::class;
+    protected static ?string $model = SensorReport::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    protected static ?string $navigationLabel = 'Ketinggian Air';
-
+    protected static ?string $navigationLabel = 'Report Sensor';
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                TextInput::make('height')
+                TextInput::make('tinggi_air')
                     ->label('Ketinggian Air (cm)')
                     ->numeric()
                     ->required(),
-
+                TextInput::make('ph')
+                ->label('pH Air')
+                ->numeric()
+                ->required(),
+                TextInput::make('debit')
+                ->label('Debit Air (cm)')
+                ->numeric()
+                ->required(),
                 Select::make('status')
                     ->label('Status')
                     ->options([
@@ -44,6 +50,7 @@ class WaterLevelResource extends Resource
                     ])
                     ->default('normal')
                     ->required(),
+
             ]);
     }
 
@@ -52,8 +59,9 @@ class WaterLevelResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('id')->sortable(),
-                TextColumn::make('height')->label('Ketinggian Air (cm)')->sortable(),
-                TextColumn::make('status')->label('Status')->badge(),
+                TextColumn::make('tinggi_air')->label('Ketinggian Air (cm)')->sortable(),
+                TextColumn::make('ph')->label('pH Air (cm)')->sortable(),
+                TextColumn::make('debit')->label('Debit Air (cm)')->sortable(),
                 TextColumn::make('created_at')->label('Dibuat pada')->dateTime(),
             ])
             ->filters([
@@ -76,7 +84,7 @@ class WaterLevelResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListWaterLevels::route('/'),
+            'index' => Pages\ListSensorReports::route('/'),
         ];
     }
 }
