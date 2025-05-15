@@ -1,6 +1,6 @@
 # abaikan semua kecuali folder penting
 *
-!private/
+private/
 !public/
 !certificates/
 !.gitignore
