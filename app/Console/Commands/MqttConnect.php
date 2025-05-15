@@ -7,10 +7,11 @@ use App\Models\SensorReport;
 use PhpMqtt\Client\MqttClient;
 use PhpMqtt\Client\ConnectionSettings;
 use Illuminate\Support\Facades\Log;
+use App\Services\CallMeBotService;
 
 class MqttConnect extends Command
 {
-    protected $signature = 'sensor:fake';
+     protected $signature = 'sensor:fake';
     protected $description = 'Generate fake sensor data';
 
     public function handle()

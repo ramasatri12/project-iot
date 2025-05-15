@@ -21,12 +21,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->app->booted(function () {
-            $schedule = app(Schedule::class);
     
-            
-            $schedule->command('mqtt:real')->everyMinute()->withoutOverlapping();
-            // Jalankan setiap 5 menit
-            $schedule->command('sensor:fake')->everyFiveMinutes();
         });
     }
 }
