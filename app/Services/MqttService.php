@@ -18,7 +18,18 @@ class MqttService
         $username = 'Website';
         $password = 'website123';
 
-        $caFile = storage_path('app/certificates/isrgrootx1.pem');
+        $caFile = storage_path('app\private\isrgrootx1.pem');
+        if (!file_exists($caFile)) {
+            $error = "❌ File CA tidak ditemukan: $caFile";
+            Log::error($error);
+
+            if (app()->environment('local')) {
+                echo $error . PHP_EOL;
+            }
+
+            return; // jangan lanjut koneksi
+        }
+
 
         $connectionSettings = (new ConnectionSettings)
             ->setUsername($username)
@@ -63,6 +74,9 @@ class MqttService
             $mqtt->loop(true);
         } catch (\Exception $e) {
             Log::error('❌ MQTT connection failed: ' . $e->getMessage());
+             if (app()->environment('local')) {
+                echo "❌ MQTT connection failed: " . $e->getMessage() . PHP_EOL;
+            }
         }
     }
 
