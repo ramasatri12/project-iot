@@ -4,6 +4,3 @@
 !public/
 !certificates/
 !.gitignore
-
-# abaikan storage/app/certificates/ supaya file sertifikat tidak ikut ke git
-storage/app/certificates/*
